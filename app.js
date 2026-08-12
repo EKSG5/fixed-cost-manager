@@ -112,11 +112,10 @@ function renderCandidateGroup(container, defaults, customValues, type) {
   });
 }
 function removeCandidate(type, value) {
-  if (type === "category") {
-    const usageCount = subscriptions.filter((item) => typeof item.category === "string" && item.category.trim() === value).length;
-    if (usageCount > 0) {
-      window.alert(`このカテゴリは${usageCount}件のサービスで使用中のため削除できません。`); return;
-    }
+  const usageCount = candidateUsageCount(type, value);
+  if (usageCount > 0) {
+    const label = type === "category" ? "カテゴリ" : "支払方法";
+    window.alert(`この${label}は${usageCount}件のサービスで使用中のため削除できません。`); return;
   }
   if (!window.confirm(`「${value}」を入力候補から削除しますか？\n登録済みサービスのデータは変更されません。`)) return;
   if (type === "category") {
@@ -127,6 +126,10 @@ function removeCandidate(type, value) {
     localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods)); updatePaymentMethodOptions();
   }
   renderCandidateManager();
+}
+function candidateUsageCount(type, value) {
+  const property = type === "category" ? "category" : "paymentMethod";
+  return subscriptions.filter((item) => typeof item[property] === "string" && item[property].trim() === value.trim()).length;
 }
 function yen(value) { return `${Math.round(value).toLocaleString("ja-JP")}円`; }
 function originalPrice(item) { return item.currency === "JPY" ? `${Number(item.price).toLocaleString("ja-JP")}円` : `$${Number(item.price).toLocaleString("en-US")}`; }
