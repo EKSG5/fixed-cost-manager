@@ -20,7 +20,8 @@ const elements = {
   categoryPanel: $("category-panel"), fab: $("open-form-button"),
   monthlyPeriod: $("monthly-period"), yearlyPeriod: $("yearly-period"), categoryFilter: $("category-filter"),
   categoryOptions: $("category-options"), paymentMethodOptions: $("payment-method-options"),
-  candidateDialog: $("candidate-dialog"), categoryCandidateList: $("category-candidate-list"), paymentCandidateList: $("payment-candidate-list")
+  candidateDialog: $("candidate-dialog"), categoryCandidateList: $("category-candidate-list"), paymentCandidateList: $("payment-candidate-list"),
+  readmeDialog: $("readme-dialog")
 };
 
 let subscriptions = loadSubscriptions();
@@ -528,6 +529,8 @@ elements.monthlyPeriod.addEventListener("keydown", (event) => { if (event.key ==
 elements.yearlyPeriod.addEventListener("keydown", (event) => { if (event.key === "ArrowLeft") selectCategoryPeriod("monthly", true); });
 elements.categoryFilter.addEventListener("change", () => { selectedCategory = elements.categoryFilter.value; renderSubscriptions(); });
 $("open-menu-button").addEventListener("click", () => elements.settingsDialog.showModal());
+$("open-readme").addEventListener("click", () => { elements.settingsDialog.close(); elements.readmeDialog.showModal(); });
+$("close-readme").addEventListener("click", () => elements.readmeDialog.close());
 $("open-candidate-manager").addEventListener("click", () => { elements.settingsDialog.close(); renderCandidateManager(); elements.candidateDialog.showModal(); });
 $("close-candidate-manager").addEventListener("click", () => elements.candidateDialog.close());
 $("close-menu-button").addEventListener("click", () => elements.settingsDialog.close());
@@ -536,6 +539,7 @@ $("cancel-button").addEventListener("click", closeForm);
 elements.form.addEventListener("submit", submitSubscription);
 elements.dialog.addEventListener("click", (event) => { if (event.target === elements.dialog) closeForm(); });
 elements.settingsDialog.addEventListener("click", (event) => { if (event.target === elements.settingsDialog) elements.settingsDialog.close(); });
+elements.readmeDialog.addEventListener("click", (event) => { if (event.target === elements.readmeDialog) elements.readmeDialog.close(); });
 elements.candidateDialog.addEventListener("click", (event) => { if (event.target === elements.candidateDialog) elements.candidateDialog.close(); });
 elements.backupButton.addEventListener("click", saveBackup);
 elements.restoreButton.addEventListener("click", () => elements.restoreFile.click());
@@ -545,4 +549,4 @@ window.addEventListener("resize", renderCategories);
 
 elements.rateInput.value = exchangeRate;
 render();
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(console.error));
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js", { scope: "./", updateViaCache: "none" }).catch(console.error));

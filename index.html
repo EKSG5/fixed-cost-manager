@@ -78,6 +78,11 @@
         <button id="close-menu-button" class="icon-button" type="button" aria-label="メニューを閉じる">×</button>
       </div>
 
+      <section class="settings-section menu-readme-section" aria-labelledby="readme-menu-heading">
+        <h3 id="readme-menu-heading">README</h3>
+        <button id="open-readme" class="ghost-button settings-action" type="button">READMEを読む</button>
+      </section>
+
       <section class="settings-section" aria-labelledby="rate-title">
         <h3 id="rate-title">為替レート</h3>
         <p>USD建ての料金を円換算するために使います。</p>
@@ -91,6 +96,11 @@
         <p id="rate-message" class="save-message" aria-live="polite"></p>
       </section>
 
+      <section class="settings-section" aria-labelledby="candidate-settings-heading">
+        <h3 id="candidate-settings-heading">設定</h3>
+        <button id="open-candidate-manager" class="ghost-button settings-action" type="button">入力候補の管理</button>
+      </section>
+
       <section class="settings-section" aria-labelledby="data-heading">
         <h3 id="data-heading">データ管理</h3>
         <p>バックアップ、復元、表計算ソフト向けの書き出しができます。</p>
@@ -102,12 +112,69 @@
         <input id="restore-file" class="visually-hidden" type="file" accept="application/json,.json">
         <p id="data-message" class="data-message" aria-live="polite"></p>
       </section>
-
-      <section class="settings-section" aria-labelledby="candidate-settings-heading">
-        <h3 id="candidate-settings-heading">設定</h3>
-        <button id="open-candidate-manager" class="ghost-button settings-action" type="button">入力候補の管理</button>
-      </section>
     </div>
+  </dialog>
+
+  <dialog id="readme-dialog" class="readme-dialog" aria-labelledby="readme-title">
+    <article class="readme-panel">
+      <div class="dialog-heading readme-heading">
+        <h2 id="readme-title">たぬすく帳のデータについて</h2>
+        <button id="close-readme" class="icon-button" type="button" aria-label="READMEを閉じる">×</button>
+      </div>
+      <div class="readme-content">
+        <p>たぬすく帳に入力したサービス名・料金・カテゴリ・支払方法などのデータは、<strong>このスマートフォンのChrome内に保存されています。</strong>インターネット上に自動保存されているわけではありません。</p>
+        <p>通常は、たぬすく帳を閉じたり、スマートフォンを再起動したりしてもデータは消えません。</p>
+        <p>ただし、<strong>Chromeの「サイトデータ」を削除すると、たぬすく帳の入力データも消えることがあります。</strong></p>
+
+        <h3>データが消える可能性がある操作</h3>
+        <p>次の操作をするときは、事前にバックアップを取ってください。</p>
+        <ul>
+          <li>Chromeの「Cookieとサイトデータ」を削除する</li>
+          <li><code>eksg5.github.io</code> の「サイトデータ」や「ストレージ」を削除する</li>
+          <li>Chromeのデータをまとめて削除・初期化する</li>
+          <li>スマートフォンを初期化する</li>
+          <li>機種変更や故障などで、現在のスマートフォンを使えなくなる</li>
+        </ul>
+        <p><strong>これらの操作をする前には、たぬすく帳のバックアップを作成してください。</strong></p>
+
+        <h3>基本的にデータが消えない操作</h3>
+        <p>次の操作では、通常、入力したデータは消えません。</p>
+        <ul>
+          <li>たぬすく帳を閉じる</li>
+          <li>スマートフォンを再起動する</li>
+          <li>Chromeの「閲覧履歴」だけを削除する</li>
+          <li>Chromeの「キャッシュされた画像とファイル」だけを削除する</li>
+          <li>たぬすく帳を最新版に更新する</li>
+        </ul>
+
+        <h3>「キャッシュ」と「サイトデータ」の違い</h3>
+        <p><strong>キャッシュ</strong>は、アプリを速く表示するためにChromeが一時的に保存しているデータです。たぬすく帳を更新したのに画面が古いままの場合、このキャッシュが原因になることがあります。</p>
+        <p>一方、たぬすく帳に入力したサービス情報などは、キャッシュとは別の<strong>サイトの保存領域</strong>に保存されています。</p>
+        <p>そのため、</p>
+        <p><strong>「キャッシュされた画像とファイル」だけを削除する</strong></p>
+        <p>のと、</p>
+        <p><strong>「Cookieとサイトデータ」「サイトのストレージ」を削除する</strong></p>
+        <p>のは別の操作です。</p>
+        <p>後者は、たぬすく帳の入力データが消える可能性があるため注意してください。</p>
+
+        <h3>バックアップについて</h3>
+        <p>たぬすく帳のメニューから、登録内容をJSONファイルとしてバックアップできます。</p>
+        <p>特に、</p>
+        <ul>
+          <li>登録内容を大きく変更したとき</li>
+          <li>Chromeのデータを整理するとき</li>
+          <li>スマートフォンを機種変更するとき</li>
+        </ul>
+        <p>にはバックアップを取ることをおすすめします。</p>
+        <p>バックアップファイルは、<strong>Google Drive、OneDrive、パソコンなど、スマートフォン本体とは別の場所</strong>に保存しておくと安心です。</p>
+        <p>データが消えてしまった場合でも、バックアップファイルがあれば「復元」から登録内容を戻すことができます。</p>
+
+        <h3>迷ったときは</h3>
+        <p>Chromeの設定で、</p>
+        <p><strong>「Cookie」「サイトデータ」「ストレージ」「データを削除」</strong></p>
+        <p>などの表示が出てきた場合は、実行する前にバックアップを取ってください。</p>
+      </div>
+    </article>
   </dialog>
 
   <dialog id="candidate-dialog" class="candidate-dialog" aria-labelledby="candidate-dialog-title">
