@@ -1,8 +1,11 @@
 "use strict";
 
-const STORAGE_KEYS = { subscriptions: "subscription-manager.items.v1", rate: "subscription-manager.usd-jpy.v1" };
+const STORAGE_KEYS = { subscriptions: "subscription-manager.items.v1", rate: "subscription-manager.usd-jpy.v1", categories: "subscription-manager.categories.v1", paymentMethods: "subscription-manager.payment-methods.v1", candidatesMigrated: "subscription-manager.candidates-migrated.v1", paymentDefaultsMigrated: "subscription-manager.payment-defaults-migrated.v1" };
 const DEFAULT_RATE = 150;
-const COLORS = ["#315c53", "#d18b47", "#537fa3", "#8d6b9f", "#6f9256", "#bd5e63", "#787878", "#3f9b94"];
+const DEFAULT_CATEGORIES = ["生活", "仕事", "娯楽"];
+const DEFAULT_PAYMENT_METHODS = ["カード", "銀行振込"];
+const RESERVED_CATEGORIES = ["未分類"];
+const COLORS = ["#2F675D", "#D89A55", "#6F93B7", "#A786B8", "#8DAA91", "#C87A74", "#9FAE68", "#5F9690"];
 
 const $ = (id) => document.getElementById(id);
 const elements = {
@@ -15,12 +18,19 @@ const elements = {
   csvButton: $("csv-button"), dataMessage: $("data-message"), settingsDialog: $("settings-dialog"),
   listTab: $("list-tab"), categoryTab: $("category-tab"), listPanel: $("list-panel"),
   categoryPanel: $("category-panel"), fab: $("open-form-button"),
-  monthlyPeriod: $("monthly-period"), yearlyPeriod: $("yearly-period")
+  monthlyPeriod: $("monthly-period"), yearlyPeriod: $("yearly-period"), categoryFilter: $("category-filter"),
+  categoryOptions: $("category-options"), paymentMethodOptions: $("payment-method-options"),
+  candidateDialog: $("candidate-dialog"), categoryCandidateList: $("category-candidate-list"), paymentCandidateList: $("payment-candidate-list")
 };
 
 let subscriptions = loadSubscriptions();
 let exchangeRate = loadRate();
 let categoryPeriod = "monthly";
+let selectedCategory = "";
+let savedCategories = loadSavedCategories();
+let savedPaymentMethods = loadSavedPaymentMethods();
+migrateExistingCandidatesOnce();
+migrateOldPaymentDefaultOnce();
 
 function loadSubscriptions() {
   try {
@@ -40,8 +50,87 @@ function loadRate() {
 }
 
 function saveSubscriptions() { localStorage.setItem(STORAGE_KEYS.subscriptions, JSON.stringify(subscriptions)); }
+function loadSavedCategories() {
+  try { const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.categories) || "[]"); return Array.isArray(value) ? [...new Set(value.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim()).filter((item) => !DEFAULT_CATEGORIES.includes(item) && !RESERVED_CATEGORIES.includes(item)))] : []; }
+  catch { return []; }
+}
+function saveCategory(category) {
+  const value = category.trim(); if (!value || DEFAULT_CATEGORIES.includes(value) || RESERVED_CATEGORIES.includes(value) || savedCategories.includes(value)) return;
+  savedCategories.push(value); localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(savedCategories));
+}
+function updateCategoryOptions() {
+  const categories = [...DEFAULT_CATEGORIES, ...savedCategories];
+  elements.categoryOptions.replaceChildren();
+  categories.forEach((category) => { const option = make("option"); option.value = category; elements.categoryOptions.append(option); });
+}
+function loadSavedPaymentMethods() {
+  try { const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.paymentMethods) || "[]"); return Array.isArray(value) ? [...new Set(value.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim()))] : []; }
+  catch { return []; }
+}
+function savePaymentMethod(paymentMethod) {
+  const value = paymentMethod.trim(); if (!value || DEFAULT_PAYMENT_METHODS.includes(value) || savedPaymentMethods.includes(value)) return;
+  savedPaymentMethods.push(value); localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods));
+}
+function updatePaymentMethodOptions() {
+  elements.paymentMethodOptions.replaceChildren();
+  [...new Set([...DEFAULT_PAYMENT_METHODS, ...savedPaymentMethods])].forEach((paymentMethod) => {
+    const option = make("option"); option.value = paymentMethod; elements.paymentMethodOptions.append(option);
+  });
+}
+function migrateExistingCandidatesOnce() {
+  if (localStorage.getItem(STORAGE_KEYS.candidatesMigrated) === "1") return;
+  const categories = subscriptions.map((item) => typeof item.category === "string" ? item.category.trim() : "").filter((item) => item && !DEFAULT_CATEGORIES.includes(item));
+  const paymentMethods = subscriptions.map((item) => typeof item.paymentMethod === "string" ? item.paymentMethod.trim() : "").filter((item) => item && !DEFAULT_PAYMENT_METHODS.includes(item));
+  savedCategories = [...new Set([...savedCategories, ...categories])];
+  savedPaymentMethods = [...new Set([...savedPaymentMethods, ...paymentMethods])];
+  localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(savedCategories));
+  localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods));
+  localStorage.setItem(STORAGE_KEYS.candidatesMigrated, "1");
+}
+function migrateOldPaymentDefaultOnce() {
+  if (localStorage.getItem(STORAGE_KEYS.paymentDefaultsMigrated) === "1") return;
+  const oldDefault = "銀行引き落とし";
+  const isUsed = subscriptions.some((item) => typeof item.paymentMethod === "string" && item.paymentMethod.trim() === oldDefault);
+  if (isUsed && !savedPaymentMethods.includes(oldDefault)) {
+    savedPaymentMethods.push(oldDefault); localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods));
+  }
+  localStorage.setItem(STORAGE_KEYS.paymentDefaultsMigrated, "1");
+}
+function renderCandidateManager() {
+  renderCandidateGroup(elements.categoryCandidateList, DEFAULT_CATEGORIES, savedCategories, "category");
+  renderCandidateGroup(elements.paymentCandidateList, DEFAULT_PAYMENT_METHODS, savedPaymentMethods, "payment");
+}
+function renderCandidateGroup(container, defaults, customValues, type) {
+  container.replaceChildren();
+  defaults.forEach((value) => {
+    const row = make("div", "candidate-item"); row.append(make("span", "candidate-name", value), make("span", "standard-badge", "標準")); container.append(row);
+  });
+  customValues.forEach((value) => {
+    const row = make("div", "candidate-item"); const remove = make("button", "candidate-delete", "削除"); remove.type = "button";
+    remove.setAttribute("aria-label", `${value}を入力候補から削除`); remove.addEventListener("click", () => removeCandidate(type, value));
+    row.append(make("span", "candidate-name", value), remove); container.append(row);
+  });
+}
+function removeCandidate(type, value) {
+  if (type === "category") {
+    const usageCount = subscriptions.filter((item) => typeof item.category === "string" && item.category.trim() === value).length;
+    if (usageCount > 0) {
+      window.alert(`このカテゴリは${usageCount}件のサービスで使用中のため削除できません。`); return;
+    }
+  }
+  if (!window.confirm(`「${value}」を入力候補から削除しますか？\n登録済みサービスのデータは変更されません。`)) return;
+  if (type === "category") {
+    savedCategories = savedCategories.filter((item) => item !== value);
+    localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(savedCategories)); updateCategoryOptions();
+  } else {
+    savedPaymentMethods = savedPaymentMethods.filter((item) => item !== value);
+    localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods)); updatePaymentMethodOptions();
+  }
+  renderCandidateManager();
+}
 function yen(value) { return `${Math.round(value).toLocaleString("ja-JP")}円`; }
 function originalPrice(item) { return item.currency === "JPY" ? `${Number(item.price).toLocaleString("ja-JP")}円` : `$${Number(item.price).toLocaleString("en-US")}`; }
+function originalPriceWithCycle(item) { return `${originalPrice(item)} / ${item.cycle === "monthly" ? "月" : "年"}`; }
 function baseYen(item) { return Number(item.price) * (item.currency === "USD" ? exchangeRate : 1); }
 function amounts(item) {
   const base = baseYen(item);
@@ -54,10 +143,31 @@ function make(tag, className, text) {
   return node;
 }
 
+function makeIconButton(label, pathData, className = "") {
+  const button = make("button", `card-action icon-action ${className}`.trim()); button.type = "button"; button.setAttribute("aria-label", label); button.title = label;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path"); path.setAttribute("d", pathData); svg.append(path); button.append(svg); return button;
+}
+function categoryName(item) { return typeof item.category === "string" && item.category.trim() ? item.category.trim() : "未分類"; }
+function categoryColor(name) {
+  let hash = 0;
+  for (const character of name) hash = ((hash * 31) + character.codePointAt(0)) >>> 0;
+  return COLORS[hash % COLORS.length];
+}
+function createCategoryColorMap(categories) {
+  const colorMap = new Map(); const usedIndexes = new Set();
+  [...categories].map(([name]) => name).sort((a, b) => a.localeCompare(b, "ja")).forEach((name) => {
+    let index = COLORS.indexOf(categoryColor(name));
+    if (usedIndexes.size < COLORS.length) while (usedIndexes.has(index)) index = (index + 1) % COLORS.length;
+    usedIndexes.add(index); colorMap.set(name, COLORS[index]);
+  });
+  return colorMap;
+}
+
 function getCategoryTotals() {
   const totals = new Map();
   subscriptions.forEach((item) => {
-    const category = item.category.trim() || "その他";
+    const category = categoryName(item);
     const current = totals.get(category) || { monthly: 0, yearly: 0 };
     const calculated = amounts(item);
     current.monthly += calculated.monthly;
@@ -68,45 +178,98 @@ function getCategoryTotals() {
 }
 
 function render() {
-  const calculated = subscriptions.map(amounts);
-  elements.monthlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.monthly, 0));
-  elements.yearlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.yearly, 0));
-  elements.count.textContent = `${subscriptions.length}件`;
+  updateCategoryOptions();
+  updatePaymentMethodOptions();
+  updateCategoryFilter();
   renderSubscriptions();
   renderCategories();
 }
 
+function renderListTotals(items) {
+  const calculated = items.map(amounts);
+  elements.monthlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.monthly, 0));
+  elements.yearlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.yearly, 0));
+}
+
 function renderSubscriptions() {
   elements.list.replaceChildren();
+  const filtered = selectedCategory ? subscriptions.filter((item) => categoryName(item) === selectedCategory) : subscriptions;
+  renderListTotals(filtered);
   if (subscriptions.length === 0) {
+    elements.count.textContent = "0件";
     const empty = make("div", "empty-state");
     empty.append(make("strong", "", "まだ登録がありません"), make("p", "", "「＋ 追加」から最初のサブスクリプションを登録してください。"));
     elements.list.append(empty);
     return;
   }
-  const sorted = [...subscriptions].sort((a, b) => a.nextRenewal.localeCompare(b.nextRenewal));
+  elements.count.textContent = `${filtered.length}件`;
+  if (filtered.length === 0) {
+    elements.list.append(make("div", "empty-state", "このカテゴリには登録中のサービスがありません。"));
+    return;
+  }
+  const sorted = [...filtered].sort((a, b) => effectiveRenewalDate(a).localeCompare(effectiveRenewalDate(b)));
   sorted.forEach((item) => elements.list.append(createSubscriptionCard(item)));
+}
+
+function updateCategoryFilter() {
+  const categories = [...new Set(subscriptions.map(categoryName))].sort((a, b) => a.localeCompare(b, "ja"));
+  if (selectedCategory && !categories.includes(selectedCategory)) selectedCategory = "";
+  elements.categoryFilter.replaceChildren();
+  const all = make("option", "", "すべて"); all.value = ""; elements.categoryFilter.append(all);
+  categories.forEach((category) => { const option = make("option", "", category); option.value = category; elements.categoryFilter.append(option); });
+  elements.categoryFilter.value = selectedCategory;
 }
 
 function createSubscriptionCard(item) {
   const card = make("article", "subscription-card");
-  const top = make("div", "card-top");
+  const top = make("button", "card-top"); top.type = "button"; top.setAttribute("aria-expanded", "false");
   const titleArea = make("div");
-  titleArea.append(make("h3", "", item.name), make("span", "category-badge", item.category || "その他"));
-  top.append(titleArea, make("span", "registered-price", originalPrice(item)));
+  titleArea.append(make("h3", "", item.name), make("span", "category-badge", categoryName(item)));
+  const priceArea = make("div", "compact-meta");
+  priceArea.append(make("strong", "registered-price", originalPriceWithCycle(item)), make("span", "renewal-date", `次回 ${formatCompactDate(effectiveRenewalDate(item))}`));
+  const chevron = make("span", "chevron", "⌄"); chevron.setAttribute("aria-hidden", "true");
+  top.append(titleArea, priceArea, chevron);
   const value = amounts(item);
+  const expanded = make("div", "card-expanded"); expanded.hidden = true;
   const conversion = make("div", "conversion-grid");
   [["月額換算", yen(value.monthly)], ["年額換算", yen(value.yearly)]].forEach(([label, amount]) => {
     const box = make("div"); box.append(make("span", "", label), make("strong", "", amount)); conversion.append(box);
   });
   const details = make("dl", "details");
-  [["更新周期", item.cycle === "monthly" ? "毎月" : "毎年"], ["次回更新日", formatDate(item.nextRenewal)], ["支払方法", item.paymentMethod || "未設定"]].forEach(([term, description]) => {
+  [["入力料金", originalPriceWithCycle(item)], ["更新周期", item.cycle === "monthly" ? "毎月" : "毎年"], ["次回更新日", formatDate(effectiveRenewalDate(item))], ["支払方法", item.paymentMethod || "未設定"]].forEach(([term, description]) => {
     const row = make("div"); row.append(make("dt", "", term), make("dd", "", description)); details.append(row);
   });
   const actions = make("div", "card-actions");
-  const edit = make("button", "card-action", "編集"); edit.type = "button"; edit.addEventListener("click", () => openForm(item));
-  const remove = make("button", "card-action danger", "削除"); remove.type = "button"; remove.addEventListener("click", () => removeSubscription(item.id));
-  actions.append(edit, remove); card.append(top, conversion, details, actions); return card;
+  const edit = makeIconButton("編集", "M4 16.5V20h3.5L18 9.5 14.5 6 4 16.5ZM16 4.5l3.5 3.5 1-1a1.4 1.4 0 0 0 0-2L18.5 3a1.4 1.4 0 0 0-2 0l-.5 1.5Z"); edit.addEventListener("click", () => openForm(item));
+  const remove = makeIconButton("削除", "M7 20a2 2 0 0 1-2-2V7h14v11a2 2 0 0 1-2 2H7Zm2-10v7h2v-7H9Zm4 0v7h2v-7h-2ZM4 4h5l1-1h4l1 1h5v2H4V4Z", "danger"); remove.addEventListener("click", () => removeSubscription(item.id));
+  actions.append(edit, remove); expanded.append(conversion, details, actions); card.append(top, expanded);
+  top.addEventListener("click", () => { const open = top.getAttribute("aria-expanded") !== "true"; top.setAttribute("aria-expanded", String(open)); expanded.hidden = !open; card.classList.toggle("expanded", open); });
+  return card;
+}
+
+function daysInMonth(year, monthIndex) { return new Date(year, monthIndex + 1, 0).getDate(); }
+function anchoredDate(year, monthIndex, day) { return new Date(year, monthIndex, Math.min(day, daysInMonth(year, monthIndex))); }
+function localDateString(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+
+function effectiveRenewalDate(item, now = new Date()) {
+  const parts = String(item.nextRenewal || "").split("-").map(Number);
+  if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) return item.nextRenewal || "";
+  const [baseYear, baseMonth, baseDay] = parts; const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let candidate;
+  if (item.cycle === "yearly") {
+    let year = Math.max(baseYear, today.getFullYear()); candidate = anchoredDate(year, baseMonth - 1, baseDay);
+    if (candidate < today) candidate = anchoredDate(year + 1, baseMonth - 1, baseDay);
+  } else {
+    let monthOffset = Math.max(0, (today.getFullYear() - baseYear) * 12 + today.getMonth() - (baseMonth - 1));
+    candidate = anchoredDate(baseYear, baseMonth - 1 + monthOffset, baseDay);
+    if (candidate < today) candidate = anchoredDate(baseYear, baseMonth + monthOffset, baseDay);
+  }
+  return localDateString(candidate);
+}
+
+function formatCompactDate(value) {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function formatDate(value) {
@@ -117,69 +280,80 @@ function formatDate(value) {
 
 function renderCategories() {
   const categories = getCategoryTotals();
+  const colorMap = createCategoryColorMap(categories);
   elements.categorySummary.replaceChildren();
   if (categories.length === 0) elements.categorySummary.append(make("p", "empty-state", "登録するとカテゴリ別の集計とグラフが表示されます。"));
   categories.filter(([, value]) => value[categoryPeriod] > 0).forEach(([name, value], index) => {
     const row = make("div", "category-row");
-    const dot = make("span", "category-color"); dot.style.backgroundColor = COLORS[index % COLORS.length];
+    const dot = make("span", "category-color"); dot.style.backgroundColor = colorMap.get(name);
     row.append(dot, make("strong", "", name), make("span", "category-amount", `${yen(value[categoryPeriod])} / ${categoryPeriod === "monthly" ? "月" : "年"}`));
     elements.categorySummary.append(row);
   });
   const canvas = $("category-chart");
   canvas.setAttribute("aria-label", `カテゴリ別${categoryPeriod === "monthly" ? "月額換算" : "年間総額"}の円グラフ`);
-  drawChart(canvas, categories, categoryPeriod);
+  drawChart(canvas, categories, categoryPeriod, colorMap);
 }
 
 // 外部ライブラリなしのため、PWAをオフラインで開いても円グラフを描画できる。
-function drawChart(canvas, categories, key) {
+function drawChart(canvas, categories, key, colorMap) {
   const ctx = canvas.getContext("2d");
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-  const width = 360; const height = 340; const centerX = 180; const centerY = 168; const radius = 106;
+  const width = 360; const height = 360; const centerX = 180; const centerY = 180; const radius = 88; const ringWidth = 48;
   canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
   const visible = categories.filter(([, value]) => value[key] > 0);
   const total = visible.reduce((sum, [, value]) => sum + value[key], 0);
   if (!total) {
-    ctx.fillStyle = "#dbe4e0"; ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(centerX, centerY, 56, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#dbe4e0"; ctx.lineWidth = ringWidth; ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = "#64746f"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.fillText("データなし", centerX, centerY + 5); return;
   }
   let start = -Math.PI / 2; const labels = [];
   visible.forEach(([name, value], index) => {
     const angle = value[key] / total * Math.PI * 2;
     const middle = start + angle / 2; const percentage = value[key] / total * 100;
-    ctx.beginPath(); ctx.moveTo(centerX, centerY); ctx.arc(centerX, centerY, radius, start, start + angle); ctx.closePath(); ctx.fillStyle = COLORS[index % COLORS.length]; ctx.fill();
-    labels.push({ name, percentage, middle, inside: percentage >= 8 }); start += angle;
+    const color = colorMap.get(name);
+    ctx.beginPath(); ctx.arc(centerX, centerY, radius, start + 0.008, start + angle - 0.008); ctx.strokeStyle = color; ctx.lineWidth = ringWidth; ctx.lineCap = "butt"; ctx.stroke();
+    labels.push({ name, percentage, middle, inside: percentage >= 8, color }); start += angle;
   });
-  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(centerX, centerY, 55, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#19302b"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center"; ctx.fillText(key === "monthly" ? "月額合計" : "年額合計", centerX, centerY - 5);
-  ctx.font = "700 14px system-ui"; ctx.fillText(yen(total), centerX, centerY + 18);
-  drawChartLabels(ctx, labels, centerX, centerY, radius);
+  ctx.fillStyle = "#19302b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "600 14px system-ui"; ctx.fillText(key === "monthly" ? "月額合計" : "年額合計", centerX, centerY - 12);
+  ctx.font = "750 17px system-ui"; ctx.fillText(yen(total), centerX, centerY + 14);
+  drawChartLabels(ctx, labels, centerX, centerY, radius, ringWidth, width, height);
 }
 
 function shortLabel(name, max = 7) { return name.length > max ? `${name.slice(0, max)}…` : name; }
 
-function drawChartLabels(ctx, labels, centerX, centerY, radius) {
-  ctx.font = "700 12px system-ui"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+function drawChartLabels(ctx, labels, centerX, centerY, radius, ringWidth, width, height) {
+  ctx.font = "700 12px system-ui"; ctx.lineJoin = "round";
   labels.filter((label) => label.inside).forEach((label) => {
-    const x = centerX + Math.cos(label.middle) * 81; const y = centerY + Math.sin(label.middle) * 81;
+    const x = centerX + Math.cos(label.middle) * radius; const y = centerY + Math.sin(label.middle) * radius;
     const text = `${shortLabel(label.name, 5)} ${label.percentage.toFixed(0)}%`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.strokeStyle = "rgba(25,48,43,.55)"; ctx.strokeText(text, x, y); ctx.fillStyle = "#fff"; ctx.fillText(text, x, y);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(25,48,43,.48)"; ctx.strokeText(text, x, y); ctx.fillStyle = "#fff"; ctx.fillText(text, x, y);
   });
   ["left", "right"].forEach((side) => {
-    const sideLabels = labels.filter((label) => !label.inside && (Math.cos(label.middle) < 0 ? "left" : "right") === side)
-      .map((label) => ({ ...label, targetY: centerY + Math.sin(label.middle) * (radius + 25) })).sort((a, b) => a.targetY - b.targetY);
-    const gap = 22; const top = 18; const bottom = 322;
-    sideLabels.forEach((label, index) => { label.y = Math.max(label.targetY, index ? sideLabels[index - 1].y + gap : top); });
-    for (let index = sideLabels.length - 1; index >= 0; index -= 1) sideLabels[index].y = Math.min(sideLabels[index].y, index < sideLabels.length - 1 ? sideLabels[index + 1].y - gap : bottom);
-    sideLabels.forEach((label) => {
-      const direction = side === "left" ? -1 : 1; const edgeX = centerX + Math.cos(label.middle) * radius; const edgeY = centerY + Math.sin(label.middle) * radius;
-      const bendX = centerX + direction * (radius + 14); const textX = centerX + direction * 153;
-      ctx.beginPath(); ctx.moveTo(edgeX, edgeY); ctx.lineTo(bendX, label.y); ctx.lineTo(textX - direction * 3, label.y); ctx.strokeStyle = "#8b9a95"; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = "#19302b"; ctx.textAlign = side === "left" ? "left" : "right"; ctx.textBaseline = "middle";
-      ctx.fillText(`${shortLabel(label.name)} ${label.percentage.toFixed(1)}%`, textX, label.y);
-    });
+    const labelRadius = radius + ringWidth / 2 + 30;
+    const smallLabels = labels.filter((label) => !label.inside && (Math.cos(label.middle) < 0 ? "left" : "right") === side)
+      .map((label) => ({ ...label, targetX: centerX + Math.cos(label.middle) * labelRadius, targetY: centerY + Math.sin(label.middle) * labelRadius }))
+      .sort((a, b) => a.targetY - b.targetY);
+    const gap = 19; const top = 14; const bottom = height - 14;
+    smallLabels.forEach((label, index) => { label.y = Math.max(top, index ? Math.max(label.targetY, smallLabels[index - 1].y + gap) : label.targetY); });
+    for (let index = smallLabels.length - 1; index >= 0; index -= 1) labelPositionWithinBounds(smallLabels, index, gap, top, bottom);
+    smallLabels.forEach((label) => drawFloatingLabel(ctx, label, side, width));
   });
+}
+
+function labelPositionWithinBounds(labels, index, gap, top, bottom) {
+  const nextLimit = index < labels.length - 1 ? labels[index + 1].y - gap : bottom;
+  labels[index].y = Math.max(top, Math.min(labels[index].y, nextLimit));
+}
+
+function drawFloatingLabel(ctx, label, side, width) {
+  const text = `${shortLabel(label.name, 6)} ${label.percentage.toFixed(1)}%`; ctx.font = "700 11.5px system-ui";
+  const groupWidth = 14 + ctx.measureText(text).width; let x = side === "left" ? label.targetX - groupWidth : label.targetX;
+  x = Math.max(6, Math.min(x, width - groupWidth - 6));
+  ctx.fillStyle = label.color; ctx.fillRect(x, label.y - 5, 10, 10);
+  ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,.72)"; ctx.strokeText(text, x + 14, label.y);
+  ctx.fillStyle = "#19302b"; ctx.fillText(text, x + 14, label.y);
 }
 
 function selectCategoryPeriod(period, moveFocus = false) {
@@ -209,17 +383,17 @@ function closeForm() { elements.dialog.close(); }
 function submitSubscription(event) {
   event.preventDefault();
   const price = Number(elements.price.value); const category = elements.category.value.trim(); const name = elements.name.value.trim();
-  if (!name || !category || !Number.isFinite(price) || price < 0 || !elements.renewal.value) { elements.formError.textContent = "必須項目と料金を正しく入力してください。"; return; }
+  if (!name || !Number.isFinite(price) || price < 0 || !elements.renewal.value) { elements.formError.textContent = "必須項目と料金を正しく入力してください。"; return; }
   const id = elements.id.value || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
   const item = { id, name, price, currency: elements.currency.value, cycle: elements.cycle.value, nextRenewal: elements.renewal.value, paymentMethod: elements.payment.value.trim(), category };
   const index = subscriptions.findIndex((entry) => entry.id === id);
   if (index >= 0) subscriptions[index] = item; else subscriptions.push(item);
-  saveSubscriptions(); closeForm(); render();
+  saveCategory(category); savePaymentMethod(item.paymentMethod); saveSubscriptions(); closeForm(); render();
 }
 
 function removeSubscription(id) {
   const item = subscriptions.find((entry) => entry.id === id);
-  if (!item || !window.confirm(`「${item.name}」を削除しますか？`)) return;
+  if (!item || !window.confirm(`「${item.name}」を本当に削除しますか？`)) return;
   subscriptions = subscriptions.filter((entry) => entry.id !== id); saveSubscriptions(); render();
 }
 
@@ -265,7 +439,7 @@ function showDataMessage(message, isError = false) {
 }
 
 function saveBackup() {
-  const backup = { version: 1, createdAt: new Date().toISOString(), subscriptions, exchangeRate };
+  const backup = { version: 1, createdAt: new Date().toISOString(), subscriptions, exchangeRate, categories: savedCategories, paymentMethods: savedPaymentMethods };
   downloadFile(JSON.stringify(backup, null, 2), "application/json;charset=utf-8", `tanusuku-backup-${dateForFilename()}.json`);
   showDataMessage("バックアップを保存しました。");
 }
@@ -286,14 +460,27 @@ async function restoreBackup(event) {
         !backup.subscriptions.every(isValidBackupItem) || !Number.isFinite(restoredRate) || restoredRate <= 0) {
       throw new Error("必要なデータが不足しているか、形式が正しくありません。");
     }
+    if (backup.categories !== undefined && (!Array.isArray(backup.categories) || !backup.categories.every((item) => typeof item === "string"))) {
+      throw new Error("カテゴリ候補の形式が正しくありません。");
+    }
+    if (backup.paymentMethods !== undefined && (!Array.isArray(backup.paymentMethods) || !backup.paymentMethods.every((item) => typeof item === "string"))) {
+      throw new Error("支払方法候補の形式が正しくありません。");
+    }
     if (!window.confirm("現在のデータをバックアップファイルの内容で置き換えます。よろしいですか？")) {
       showDataMessage("復元をキャンセルしました。"); return;
     }
     // 検証と確認が完了した後にだけ、現在データを書き換える。
     subscriptions = backup.subscriptions.map((item) => ({ ...item }));
     exchangeRate = restoredRate;
+    const restoredCategories = subscriptions.map((item) => typeof item.category === "string" ? item.category.trim() : "").filter(Boolean);
+    const restoredPaymentMethods = subscriptions.map((item) => typeof item.paymentMethod === "string" ? item.paymentMethod.trim() : "").filter(Boolean);
+    savedCategories = [...new Set((backup.categories || restoredCategories).map((item) => item.trim()).filter((item) => item && !DEFAULT_CATEGORIES.includes(item) && !RESERVED_CATEGORIES.includes(item)))];
+    savedPaymentMethods = [...new Set((backup.paymentMethods || restoredPaymentMethods).map((item) => item.trim()).filter((item) => item && !DEFAULT_PAYMENT_METHODS.includes(item)))];
     localStorage.setItem(STORAGE_KEYS.subscriptions, JSON.stringify(subscriptions));
     localStorage.setItem(STORAGE_KEYS.rate, String(exchangeRate));
+    localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(savedCategories));
+    localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods));
+    localStorage.setItem(STORAGE_KEYS.candidatesMigrated, "1");
     elements.rateInput.value = exchangeRate;
     render(); showDataMessage("バックアップから復元しました。");
   } catch (error) {
@@ -336,13 +523,17 @@ elements.monthlyPeriod.addEventListener("click", () => selectCategoryPeriod("mon
 elements.yearlyPeriod.addEventListener("click", () => selectCategoryPeriod("yearly"));
 elements.monthlyPeriod.addEventListener("keydown", (event) => { if (event.key === "ArrowRight") selectCategoryPeriod("yearly", true); });
 elements.yearlyPeriod.addEventListener("keydown", (event) => { if (event.key === "ArrowLeft") selectCategoryPeriod("monthly", true); });
+elements.categoryFilter.addEventListener("change", () => { selectedCategory = elements.categoryFilter.value; renderSubscriptions(); });
 $("open-menu-button").addEventListener("click", () => elements.settingsDialog.showModal());
+$("open-candidate-manager").addEventListener("click", () => { elements.settingsDialog.close(); renderCandidateManager(); elements.candidateDialog.showModal(); });
+$("close-candidate-manager").addEventListener("click", () => elements.candidateDialog.close());
 $("close-menu-button").addEventListener("click", () => elements.settingsDialog.close());
 $("close-form-button").addEventListener("click", closeForm);
 $("cancel-button").addEventListener("click", closeForm);
 elements.form.addEventListener("submit", submitSubscription);
 elements.dialog.addEventListener("click", (event) => { if (event.target === elements.dialog) closeForm(); });
 elements.settingsDialog.addEventListener("click", (event) => { if (event.target === elements.settingsDialog) elements.settingsDialog.close(); });
+elements.candidateDialog.addEventListener("click", (event) => { if (event.target === elements.candidateDialog) elements.candidateDialog.close(); });
 elements.backupButton.addEventListener("click", saveBackup);
 elements.restoreButton.addEventListener("click", () => elements.restoreFile.click());
 elements.restoreFile.addEventListener("change", restoreBackup);

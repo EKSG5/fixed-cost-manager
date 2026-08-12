@@ -43,7 +43,10 @@
       <section aria-labelledby="list-heading">
         <div class="section-heading list-heading">
           <div><h2 id="list-heading">登録中のサービス</h2></div>
-          <span id="item-count" class="count-badge">0件</span>
+          <div class="list-tools">
+            <span id="item-count" class="count-badge">0件</span>
+            <label class="filter-label">カテゴリ<select id="category-filter" aria-label="カテゴリで絞り込む"><option value="">すべて</option></select></label>
+          </div>
         </div>
         <div id="subscription-list" class="subscription-list"></div>
       </section>
@@ -59,7 +62,7 @@
           <button id="yearly-period" class="period-button" type="button" role="tab" aria-selected="false">年額換算</button>
         </div>
         <article class="chart-card single-chart">
-          <div class="chart-wrap"><canvas id="category-chart" width="360" height="340" aria-label="カテゴリ別月額換算の円グラフ"></canvas></div>
+          <div class="chart-wrap"><canvas id="category-chart" width="360" height="360" aria-label="カテゴリ別月額換算の円グラフ"></canvas></div>
         </article>
         <div id="category-summary" class="category-summary"></div>
       </section>
@@ -84,6 +87,7 @@
           <span>円</span>
           <button class="secondary-button" type="submit">保存</button>
         </form>
+        <a class="rate-link" href="https://wise.com/jp/currency-converter/usd-to-jpy-rate" target="_blank" rel="noopener noreferrer">USD/JPYレートを確認</a>
         <p id="rate-message" class="save-message" aria-live="polite"></p>
       </section>
 
@@ -97,6 +101,29 @@
         </div>
         <input id="restore-file" class="visually-hidden" type="file" accept="application/json,.json">
         <p id="data-message" class="data-message" aria-live="polite"></p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="candidate-settings-heading">
+        <h3 id="candidate-settings-heading">設定</h3>
+        <button id="open-candidate-manager" class="ghost-button settings-action" type="button">入力候補の管理</button>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="candidate-dialog" class="candidate-dialog" aria-labelledby="candidate-dialog-title">
+    <div class="candidate-panel">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">SETTINGS</p><h2 id="candidate-dialog-title">入力候補の管理</h2></div>
+        <button id="close-candidate-manager" class="icon-button" type="button" aria-label="入力候補の管理を閉じる">×</button>
+      </div>
+      <p class="candidate-note">候補を削除しても、登録済みサービスのデータは変更されません。</p>
+      <section class="candidate-section" aria-labelledby="category-candidates-heading">
+        <h3 id="category-candidates-heading">カテゴリ</h3>
+        <div id="category-candidate-list" class="candidate-list"></div>
+      </section>
+      <section class="candidate-section" aria-labelledby="payment-candidates-heading">
+        <h3 id="payment-candidates-heading">支払方法</h3>
+        <div id="payment-candidate-list" class="candidate-list"></div>
       </section>
     </div>
   </dialog>
@@ -115,8 +142,8 @@
         <label>更新周期<select id="cycle" required><option value="monthly">毎月</option><option value="yearly">毎年</option></select></label>
         <label>次回更新日<input id="next-renewal" type="date" required></label>
         <label class="full">支払方法<input id="payment-method" list="payment-method-options" maxlength="80" placeholder="候補から選択、または自由入力"></label>
-        <datalist id="payment-method-options"><option value="dカード"><option value="銀行引き落とし"></datalist>
-        <label class="full">カテゴリ<input id="category" list="category-options" maxlength="40" placeholder="候補から選択、または自由入力" required></label>
+        <datalist id="payment-method-options"><option value="カード"><option value="銀行振込"></datalist>
+        <label class="full">カテゴリ<input id="category" list="category-options" maxlength="40" placeholder="候補から選択、または自由入力"></label>
         <datalist id="category-options"><option value="生活"><option value="仕事"><option value="娯楽"></datalist>
       </div>
       <p id="form-error" class="form-error" aria-live="polite"></p>
