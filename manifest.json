@@ -3,7 +3,7 @@
   "short_name": "たぬすく帳",
   "description": "定期支出をまとめて管理する個人用アプリ",
   "lang": "ja",
-  "id": "./",
+  "id": "/fixed-cost-manager/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
