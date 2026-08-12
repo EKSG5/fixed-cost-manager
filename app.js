@@ -266,7 +266,7 @@ function showDataMessage(message, isError = false) {
 
 function saveBackup() {
   const backup = { version: 1, createdAt: new Date().toISOString(), subscriptions, exchangeRate };
-  downloadFile(JSON.stringify(backup, null, 2), "application/json;charset=utf-8", `fixed-cost-backup-${dateForFilename()}.json`);
+  downloadFile(JSON.stringify(backup, null, 2), "application/json;charset=utf-8", `tanusuku-backup-${dateForFilename()}.json`);
   showDataMessage("バックアップを保存しました。");
 }
 
@@ -316,7 +316,7 @@ function exportCsv() {
       item.paymentMethod || "", item.category, Math.round(calculated.monthly), Math.round(calculated.yearly)];
   });
   const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
-  downloadFile(`\uFEFF${csv}`, "text/csv;charset=utf-8", `fixed-cost-list-${dateForFilename()}.csv`);
+  downloadFile(`\uFEFF${csv}`, "text/csv;charset=utf-8", `tanusuku-list-${dateForFilename()}.csv`);
   showDataMessage("CSVを書き出しました。");
 }
 
@@ -351,4 +351,4 @@ window.addEventListener("resize", renderCategories);
 
 elements.rateInput.value = exchangeRate;
 render();
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(console.error));
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js", { scope: "./" }).catch(console.error));
