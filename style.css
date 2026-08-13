@@ -40,6 +40,8 @@ h3 { font-size: 1.05rem; }
 .fab:focus-visible { outline: 3px solid white; outline-offset: -5px; }
 .summary-grid { position: sticky; top: calc(var(--app-header-height) + var(--tab-height)); z-index: 8; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: -4px -4px 18px; padding: 8px 4px; background: var(--bg); box-shadow: 0 5px 9px rgba(31, 65, 57, .05); }
 .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: var(--shadow); }
+.summary-card[role="button"] { cursor: pointer; }
+.summary-card[role="button"]:focus-visible { outline: 3px solid rgba(49, 92, 83, .25); outline-offset: 2px; }
 .summary-card.accent { background: var(--accent); }
 .summary-card span { display: block; color: var(--muted); font-size: .85rem; font-weight: 700; }
 .summary-card strong { display: block; margin-top: 4px; font-size: clamp(1.55rem, 5vw, 2.25rem); letter-spacing: -.04em; }
@@ -83,8 +85,10 @@ input:focus, select:focus { outline: 3px solid rgba(49, 92, 83, .18); border-col
 .category-color { width: 12px; height: 12px; border-radius: 2px; }
 .chart-card { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
 .single-chart { padding: 4px 0 8px; border: 0; }
-.chart-wrap { width: min(360px, 100%); aspect-ratio: 1; margin: 0 auto; }
+.chart-wrap { position: relative; width: min(360px, 100%); aspect-ratio: 1; margin: 0 auto; }
 .chart-wrap canvas { width: 100%; height: 100%; display: block; }
+.category-total-toggle { position: absolute; top: 50%; left: 50%; width: 112px; height: 82px; padding: 0; transform: translate(-50%, -50%); background: transparent; border: 0; border-radius: 50%; }
+.category-total-toggle:focus-visible { outline: 3px solid rgba(49, 92, 83, .28); outline-offset: 2px; }
 .count-badge, .category-badge { display: inline-block; padding: 4px 9px; color: var(--primary); background: var(--accent); border-radius: 999px; font-size: .75rem; font-weight: 750; }
 .subscription-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 9px; }
 .subscription-card { padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; box-shadow: var(--shadow); }

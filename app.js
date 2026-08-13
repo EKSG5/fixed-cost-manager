@@ -21,7 +21,7 @@ const elements = {
   monthlyPeriod: $("monthly-period"), yearlyPeriod: $("yearly-period"), categoryFilter: $("category-filter"),
   categoryOptions: $("category-options"), paymentMethodOptions: $("payment-method-options"),
   candidateDialog: $("candidate-dialog"), categoryCandidateList: $("category-candidate-list"), paymentCandidateList: $("payment-candidate-list"),
-  readmeDialog: $("readme-dialog")
+  readmeDialog: $("readme-dialog"), categoryTotalToggle: $("category-total-toggle")
 };
 
 let subscriptions = loadSubscriptions();
@@ -31,6 +31,8 @@ let selectedCategory = "";
 let savedCategories = loadSavedCategories();
 let savedPaymentMethods = loadSavedPaymentMethods();
 const expandedCategoryNames = new Set();
+let isTotalAmountHidden = false;
+let currentListTotals = { monthly: 0, yearly: 0 };
 migrateExistingCandidatesOnce();
 migrateOldPaymentDefaultOnce();
 
@@ -223,8 +225,24 @@ function render() {
 
 function renderListTotals(items) {
   const calculated = items.map(amounts);
-  elements.monthlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.monthly, 0));
-  elements.yearlyTotal.textContent = yen(calculated.reduce((sum, value) => sum + value.yearly, 0));
+  currentListTotals = {
+    monthly: calculated.reduce((sum, value) => sum + value.monthly, 0),
+    yearly: calculated.reduce((sum, value) => sum + value.yearly, 0)
+  };
+  updateListTotalDisplay();
+}
+
+function updateListTotalDisplay() {
+  const hiddenText = "*****円";
+  elements.monthlyTotal.textContent = isTotalAmountHidden ? hiddenText : yen(currentListTotals.monthly);
+  elements.yearlyTotal.textContent = isTotalAmountHidden ? hiddenText : yen(currentListTotals.yearly);
+  document.querySelectorAll(".summary-card").forEach((card) => card.setAttribute("aria-label", isTotalAmountHidden ? "合計金額を表示" : "合計金額を非表示"));
+}
+
+function toggleTotalAmountVisibility() {
+  isTotalAmountHidden = !isTotalAmountHidden;
+  updateListTotalDisplay();
+  renderCategories();
 }
 
 function renderSubscriptions() {
@@ -349,6 +367,7 @@ function renderCategories() {
   });
   const canvas = $("category-chart");
   canvas.setAttribute("aria-label", `カテゴリ別${categoryPeriod === "monthly" ? "月額換算" : "年間総額"}の円グラフ`);
+  elements.categoryTotalToggle.setAttribute("aria-label", isTotalAmountHidden ? "合計金額を表示" : "合計金額を非表示");
   drawChart(canvas, categories, categoryPeriod, colorMap);
 }
 
@@ -375,7 +394,7 @@ function drawChart(canvas, categories, key, colorMap) {
   });
   ctx.fillStyle = "#19302b"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.font = "600 14px system-ui"; ctx.fillText(key === "monthly" ? "月額合計" : "年額合計", centerX, centerY - 12);
-  ctx.font = "750 17px system-ui"; ctx.fillText(yen(total), centerX, centerY + 14);
+  ctx.font = "750 17px system-ui"; ctx.fillText(isTotalAmountHidden ? "*****円" : yen(total), centerX, centerY + 14);
   drawChartLabels(ctx, labels, centerX, centerY, radius, ringWidth, width, height);
 }
 
@@ -574,6 +593,13 @@ elements.rateForm.addEventListener("submit", (event) => {
   setTimeout(() => { elements.rateMessage.textContent = ""; }, 2500);
 });
 $("open-form-button").addEventListener("click", () => openForm());
+document.querySelectorAll(".summary-card").forEach((card) => {
+  card.addEventListener("click", toggleTotalAmountVisibility);
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleTotalAmountVisibility(); }
+  });
+});
+elements.categoryTotalToggle.addEventListener("click", toggleTotalAmountVisibility);
 elements.listTab.addEventListener("click", () => selectTab("list"));
 elements.categoryTab.addEventListener("click", () => selectTab("category"));
 elements.listTab.addEventListener("keydown", (event) => { if (event.key === "ArrowRight") selectTab("category", true); });

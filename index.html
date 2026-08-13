@@ -30,11 +30,11 @@
   <main class="container">
     <div id="list-panel" class="tab-panel list-panel" role="tabpanel" aria-labelledby="list-tab">
       <section class="summary-grid" aria-label="全体集計">
-        <article class="summary-card">
+        <article class="summary-card" role="button" tabindex="0" aria-label="合計金額を非表示">
           <span>月額換算</span>
           <strong id="monthly-total">0円</strong>
         </article>
-        <article class="summary-card accent">
+        <article class="summary-card accent" role="button" tabindex="0" aria-label="合計金額を非表示">
           <span>年間総額</span>
           <strong id="yearly-total">0円</strong>
         </article>
@@ -62,7 +62,10 @@
           <button id="yearly-period" class="period-button" type="button" role="tab" aria-selected="false">年額換算</button>
         </div>
         <article class="chart-card single-chart">
-          <div class="chart-wrap"><canvas id="category-chart" width="360" height="360" aria-label="カテゴリ別月額換算の円グラフ"></canvas></div>
+          <div class="chart-wrap">
+            <canvas id="category-chart" width="360" height="360" aria-label="カテゴリ別月額換算の円グラフ"></canvas>
+            <button id="category-total-toggle" class="category-total-toggle" type="button" aria-label="合計金額を非表示"></button>
+          </div>
         </article>
         <div id="category-summary" class="category-summary"></div>
       </section>
