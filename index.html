@@ -18,7 +18,7 @@
       <h1>たぬすく帳</h1>
     </div>
     <div class="header-actions">
-      <button id="open-menu-button" class="menu-button" type="button" aria-haspopup="dialog">☰ メニュー</button>
+      <button id="open-menu-button" class="menu-button" type="button" aria-haspopup="dialog">☰ MENU</button>
     </div>
   </header>
 
@@ -74,13 +74,12 @@
   <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
     <div class="settings-panel">
       <div class="dialog-heading settings-heading">
-        <div><p class="eyebrow">SETTINGS</p><h2 id="settings-title">メニュー</h2></div>
+        <div><p class="eyebrow">SETTINGS</p><h2 id="settings-title">MENU</h2></div>
         <button id="close-menu-button" class="icon-button" type="button" aria-label="メニューを閉じる">×</button>
       </div>
 
-      <section class="settings-section menu-readme-section" aria-labelledby="readme-menu-heading">
-        <h3 id="readme-menu-heading">README</h3>
-        <button id="open-readme" class="ghost-button settings-action" type="button">READMEを読む</button>
+      <section class="settings-section menu-readme-section">
+        <button id="open-readme" class="ghost-button settings-action menu-readme-button" type="button">README</button>
       </section>
 
       <section class="settings-section" aria-labelledby="rate-title">
@@ -183,7 +182,6 @@
         <div><p class="eyebrow">SETTINGS</p><h2 id="candidate-dialog-title">入力候補の管理</h2></div>
         <button id="close-candidate-manager" class="icon-button" type="button" aria-label="入力候補の管理を閉じる">×</button>
       </div>
-      <p class="candidate-note">候補を削除しても、登録済みサービスのデータは変更されません。</p>
       <section class="candidate-section" aria-labelledby="category-candidates-heading">
         <h3 id="category-candidates-heading">カテゴリ</h3>
         <div id="category-candidate-list" class="candidate-list"></div>
@@ -208,10 +206,20 @@
         <label>通貨<select id="currency" required><option value="JPY">日本円（JPY）</option><option value="USD">米ドル（USD）</option></select></label>
         <label>更新周期<select id="cycle" required><option value="monthly">毎月</option><option value="yearly">毎年</option></select></label>
         <label>次回更新日<input id="next-renewal" type="date" required></label>
-        <label class="full">支払方法<input id="payment-method" list="payment-method-options" maxlength="80" placeholder="候補から選択、または自由入力"></label>
-        <datalist id="payment-method-options"><option value="カード"><option value="銀行振込"></datalist>
-        <label class="full">カテゴリ<input id="category" list="category-options" maxlength="40" placeholder="候補から選択、または自由入力"></label>
-        <datalist id="category-options"><option value="生活"><option value="仕事"><option value="娯楽"></datalist>
+        <div class="form-field full">
+          <label for="payment-method">支払方法</label>
+          <div class="candidate-combobox">
+            <input id="payment-method" maxlength="80" placeholder="候補から選択、または自由入力" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="payment-method-options" aria-expanded="false">
+            <div id="payment-method-options" class="input-candidate-list" role="listbox" hidden></div>
+          </div>
+        </div>
+        <div class="form-field full">
+          <label for="category">カテゴリ</label>
+          <div class="candidate-combobox">
+            <input id="category" maxlength="40" placeholder="候補から選択、または自由入力" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="category-options" aria-expanded="false">
+            <div id="category-options" class="input-candidate-list" role="listbox" hidden></div>
+          </div>
+        </div>
       </div>
       <p id="form-error" class="form-error" aria-live="polite"></p>
       <div class="form-actions">

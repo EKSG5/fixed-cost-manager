@@ -30,6 +30,7 @@ let categoryPeriod = "monthly";
 let selectedCategory = "";
 let savedCategories = loadSavedCategories();
 let savedPaymentMethods = loadSavedPaymentMethods();
+const expandedCategoryNames = new Set();
 migrateExistingCandidatesOnce();
 migrateOldPaymentDefaultOnce();
 
@@ -60,9 +61,7 @@ function saveCategory(category) {
   savedCategories.push(value); localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(savedCategories));
 }
 function updateCategoryOptions() {
-  const categories = [...DEFAULT_CATEGORIES, ...savedCategories];
-  elements.categoryOptions.replaceChildren();
-  categories.forEach((category) => { const option = make("option"); option.value = category; elements.categoryOptions.append(option); });
+  renderInputCandidates(elements.category, elements.categoryOptions, [...DEFAULT_CATEGORIES, ...savedCategories]);
 }
 function loadSavedPaymentMethods() {
   try { const value = JSON.parse(localStorage.getItem(STORAGE_KEYS.paymentMethods) || "[]"); return Array.isArray(value) ? [...new Set(value.filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim()))] : []; }
@@ -73,9 +72,39 @@ function savePaymentMethod(paymentMethod) {
   savedPaymentMethods.push(value); localStorage.setItem(STORAGE_KEYS.paymentMethods, JSON.stringify(savedPaymentMethods));
 }
 function updatePaymentMethodOptions() {
-  elements.paymentMethodOptions.replaceChildren();
-  [...new Set([...DEFAULT_PAYMENT_METHODS, ...savedPaymentMethods])].forEach((paymentMethod) => {
-    const option = make("option"); option.value = paymentMethod; elements.paymentMethodOptions.append(option);
+  renderInputCandidates(elements.payment, elements.paymentMethodOptions, [...DEFAULT_PAYMENT_METHODS, ...savedPaymentMethods]);
+}
+
+function candidateValues(input) {
+  return input === elements.category
+    ? [...DEFAULT_CATEGORIES, ...savedCategories]
+    : [...DEFAULT_PAYMENT_METHODS, ...savedPaymentMethods];
+}
+
+function renderInputCandidates(input, panel, values = candidateValues(input)) {
+  const query = input.value.trim().toLocaleLowerCase("ja");
+  const filtered = [...new Set(values)].filter((value) => !query || value.toLocaleLowerCase("ja").includes(query));
+  panel.replaceChildren();
+  filtered.forEach((value) => {
+    const option = make("button", "input-candidate-option", value); option.type = "button"; option.setAttribute("role", "option");
+    option.addEventListener("pointerdown", (event) => event.preventDefault());
+    option.addEventListener("click", () => { input.value = value; input.focus({ preventScroll: true }); closeInputCandidates(); });
+    panel.append(option);
+  });
+  if (!panel.hidden) {
+    panel.hidden = filtered.length === 0;
+    input.setAttribute("aria-expanded", String(filtered.length > 0));
+  }
+}
+
+function openInputCandidates(input, panel) {
+  closeInputCandidates(); renderInputCandidates(input, panel);
+  const hasOptions = panel.childElementCount > 0; panel.hidden = !hasOptions; input.setAttribute("aria-expanded", String(hasOptions));
+}
+
+function closeInputCandidates() {
+  [[elements.category, elements.categoryOptions], [elements.payment, elements.paymentMethodOptions]].forEach(([input, panel]) => {
+    panel.hidden = true; input.setAttribute("aria-expanded", "false");
   });
 }
 function migrateExistingCandidatesOnce() {
@@ -285,13 +314,35 @@ function formatDate(value) {
 function renderCategories() {
   const categories = getCategoryTotals();
   const colorMap = createCategoryColorMap(categories);
+  const visibleCategories = categories.filter(([, value]) => value[categoryPeriod] > 0);
+  const total = visibleCategories.reduce((sum, [, value]) => sum + value[categoryPeriod], 0);
   elements.categorySummary.replaceChildren();
   if (categories.length === 0) elements.categorySummary.append(make("p", "empty-state", "登録するとカテゴリ別の集計とグラフが表示されます。"));
-  categories.filter(([, value]) => value[categoryPeriod] > 0).forEach(([name, value], index) => {
-    const row = make("div", "category-row");
+  visibleCategories.forEach(([name, value]) => {
+    const item = make("div", "category-breakdown");
+    const row = make("button", "category-row"); row.type = "button";
+    const isExpanded = expandedCategoryNames.has(name);
+    row.setAttribute("aria-expanded", String(isExpanded));
     const dot = make("span", "category-color"); dot.style.backgroundColor = colorMap.get(name);
-    row.append(dot, make("strong", "", name), make("span", "category-amount", `${yen(value[categoryPeriod])} / ${categoryPeriod === "monthly" ? "月" : "年"}`));
-    elements.categorySummary.append(row);
+    const metrics = make("span", "category-metrics");
+    metrics.append(
+      make("span", "category-amount", `${yen(value[categoryPeriod])} / ${categoryPeriod === "monthly" ? "月" : "年"}`),
+      make("span", "category-percentage", `${total > 0 ? (value[categoryPeriod] / total * 100).toFixed(1) : "0.0"}%`)
+    );
+    const chevron = make("span", "category-chevron", "⌄"); chevron.setAttribute("aria-hidden", "true");
+    row.append(dot, make("strong", "", name), metrics, chevron);
+    const services = make("div", "category-services"); services.hidden = !isExpanded;
+    subscriptions.filter((subscription) => categoryName(subscription) === name).forEach((subscription) => {
+      const service = make("div", "category-service");
+      service.append(make("strong", "", subscription.name), make("span", "", originalPriceWithCycle(subscription)));
+      services.append(service);
+    });
+    row.addEventListener("click", () => {
+      const open = row.getAttribute("aria-expanded") !== "true";
+      row.setAttribute("aria-expanded", String(open)); services.hidden = !open;
+      if (open) expandedCategoryNames.add(name); else expandedCategoryNames.delete(name);
+    });
+    item.append(row, services); elements.categorySummary.append(item);
   });
   const canvas = $("category-chart");
   canvas.setAttribute("aria-label", `カテゴリ別${categoryPeriod === "monthly" ? "月額換算" : "年間総額"}の円グラフ`);
@@ -375,6 +426,7 @@ function selectCategoryPeriod(period, moveFocus = false) {
 
 function openForm(item = null) {
   elements.form.reset(); elements.formError.textContent = "";
+  updateCategoryOptions(); updatePaymentMethodOptions(); closeInputCandidates();
   elements.formTitle.textContent = item ? "サブスクリプションを編集" : "サブスクリプションを追加";
   elements.id.value = item?.id || ""; elements.name.value = item?.name || ""; elements.price.value = item?.price ?? "";
   elements.currency.value = item?.currency || "JPY"; elements.cycle.value = item?.cycle || "monthly";
@@ -382,7 +434,7 @@ function openForm(item = null) {
   elements.dialog.showModal(); setTimeout(() => elements.name.focus(), 0);
 }
 function todayString() { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; }
-function closeForm() { elements.dialog.close(); }
+function closeForm() { closeInputCandidates(); elements.dialog.close(); }
 
 function submitSubscription(event) {
   event.preventDefault();
@@ -537,6 +589,17 @@ $("close-menu-button").addEventListener("click", () => elements.settingsDialog.c
 $("close-form-button").addEventListener("click", closeForm);
 $("cancel-button").addEventListener("click", closeForm);
 elements.form.addEventListener("submit", submitSubscription);
+[[elements.payment, elements.paymentMethodOptions], [elements.category, elements.categoryOptions]].forEach(([input, panel]) => {
+  input.addEventListener("focus", () => openInputCandidates(input, panel));
+  input.addEventListener("input", () => openInputCandidates(input, panel));
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest(".candidate-combobox")) closeInputCandidates();
+});
+document.addEventListener("focusin", (event) => {
+  if (event.target !== elements.payment && event.target !== elements.category && !event.target.closest(".input-candidate-list")) closeInputCandidates();
+});
+elements.dialog.addEventListener("close", closeInputCandidates);
 elements.dialog.addEventListener("click", (event) => { if (event.target === elements.dialog) closeForm(); });
 elements.settingsDialog.addEventListener("click", (event) => { if (event.target === elements.settingsDialog) elements.settingsDialog.close(); });
 elements.readmeDialog.addEventListener("click", (event) => { if (event.target === elements.readmeDialog) elements.readmeDialog.close(); });
