@@ -1,4 +1,4 @@
-const CACHE_NAME = "fixed-cost-manager-v35";
+const CACHE_NAME = "fixed-cost-manager-v36";
 const APP_SHELL = ["./", "./index.html", "./style.css", "./app.js", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/icon-maskable-512.png"];
 const NETWORK_FIRST_PATHS = new Set(["", "index.html", "style.css", "app.js", "manifest.json"]);
 const OFFLINE_PAGE = new URL("./index.html", self.registration.scope).href;

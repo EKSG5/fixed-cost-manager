@@ -359,11 +359,15 @@ function renderCategories() {
     const chevron = make("span", "category-chevron", "⌄"); chevron.setAttribute("aria-hidden", "true");
     row.append(dot, make("strong", "", name), metrics, chevron);
     const services = make("div", "category-services"); services.hidden = !isExpanded;
-    subscriptions.filter((subscription) => categoryName(subscription) === name).forEach((subscription) => {
+    subscriptions
+      .map((subscription, registrationIndex) => ({ subscription, registrationIndex }))
+      .filter(({ subscription }) => categoryName(subscription) === name)
+      .sort((a, b) => amounts(b.subscription)[categoryPeriod] - amounts(a.subscription)[categoryPeriod] || a.registrationIndex - b.registrationIndex)
+      .forEach(({ subscription }) => {
       const service = make("div", "category-service");
       service.append(make("strong", "", subscription.name), make("span", "", categoryServicePrice(subscription)));
       services.append(service);
-    });
+      });
     row.addEventListener("click", () => {
       const open = row.getAttribute("aria-expanded") !== "true";
       row.setAttribute("aria-expanded", String(open)); services.hidden = !open;
