@@ -169,6 +169,9 @@ function amounts(item) {
   const base = baseYen(item);
   return item.cycle === "monthly" ? { monthly: base, yearly: base * 12 } : { monthly: base / 12, yearly: base };
 }
+function categoryServicePrice(item) {
+  return `${yen(amounts(item)[categoryPeriod])} / ${categoryPeriod === "monthly" ? "月" : "年"}`;
+}
 function make(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -334,7 +337,7 @@ function renderCategories() {
     const services = make("div", "category-services"); services.hidden = !isExpanded;
     subscriptions.filter((subscription) => categoryName(subscription) === name).forEach((subscription) => {
       const service = make("div", "category-service");
-      service.append(make("strong", "", subscription.name), make("span", "", originalPriceWithCycle(subscription)));
+      service.append(make("strong", "", subscription.name), make("span", "", categoryServicePrice(subscription)));
       services.append(service);
     });
     row.addEventListener("click", () => {
