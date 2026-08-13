@@ -1,6 +1,6 @@
 "use strict";
 
-const STORAGE_KEYS = { subscriptions: "subscription-manager.items.v1", rate: "subscription-manager.usd-jpy.v1", categories: "subscription-manager.categories.v1", paymentMethods: "subscription-manager.payment-methods.v1", candidatesMigrated: "subscription-manager.candidates-migrated.v1", paymentDefaultsMigrated: "subscription-manager.payment-defaults-migrated.v1" };
+const STORAGE_KEYS = { subscriptions: "subscription-manager.items.v1", rate: "subscription-manager.usd-jpy.v1", categories: "subscription-manager.categories.v1", paymentMethods: "subscription-manager.payment-methods.v1", candidatesMigrated: "subscription-manager.candidates-migrated.v1", paymentDefaultsMigrated: "subscription-manager.payment-defaults-migrated.v1", totalAmountHidden: "subscription-manager.total-amount-hidden.v1" };
 const DEFAULT_RATE = 150;
 const DEFAULT_CATEGORIES = ["生活", "仕事", "娯楽"];
 const DEFAULT_PAYMENT_METHODS = ["カード", "銀行振込"];
@@ -31,7 +31,7 @@ let selectedCategory = "";
 let savedCategories = loadSavedCategories();
 let savedPaymentMethods = loadSavedPaymentMethods();
 const expandedCategoryNames = new Set();
-let isTotalAmountHidden = false;
+let isTotalAmountHidden = loadTotalAmountHidden();
 let currentListTotals = { monthly: 0, yearly: 0 };
 migrateExistingCandidatesOnce();
 migrateOldPaymentDefaultOnce();
@@ -51,6 +51,11 @@ function isValidSubscription(item) {
 function loadRate() {
   const value = Number(localStorage.getItem(STORAGE_KEYS.rate));
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_RATE;
+}
+
+function loadTotalAmountHidden() {
+  try { return localStorage.getItem(STORAGE_KEYS.totalAmountHidden) === "true"; }
+  catch { return false; }
 }
 
 function saveSubscriptions() { localStorage.setItem(STORAGE_KEYS.subscriptions, JSON.stringify(subscriptions)); }
@@ -241,6 +246,7 @@ function updateListTotalDisplay() {
 
 function toggleTotalAmountVisibility() {
   isTotalAmountHidden = !isTotalAmountHidden;
+  localStorage.setItem(STORAGE_KEYS.totalAmountHidden, String(isTotalAmountHidden));
   updateListTotalDisplay();
   renderCategories();
 }
@@ -618,6 +624,19 @@ $("close-menu-button").addEventListener("click", () => elements.settingsDialog.c
 $("close-form-button").addEventListener("click", closeForm);
 $("cancel-button").addEventListener("click", closeForm);
 elements.form.addEventListener("submit", submitSubscription);
+[elements.name, elements.price, elements.payment, elements.category].forEach((input) => {
+  let wasFocusedAtPointerDown = false;
+  input.addEventListener("pointerdown", (event) => {
+    wasFocusedAtPointerDown = event.isPrimary && event.button === 0 && document.activeElement === input;
+  });
+  input.addEventListener("pointercancel", () => { wasFocusedAtPointerDown = false; });
+  input.addEventListener("click", () => {
+    if (!wasFocusedAtPointerDown) return;
+    wasFocusedAtPointerDown = false;
+    input.blur();
+    closeInputCandidates();
+  });
+});
 [[elements.payment, elements.paymentMethodOptions], [elements.category, elements.categoryOptions]].forEach(([input, panel]) => {
   input.addEventListener("focus", () => openInputCandidates(input, panel));
   input.addEventListener("input", () => openInputCandidates(input, panel));
